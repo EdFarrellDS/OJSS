@@ -1,5 +1,5 @@
 # TODO - Non-code
 
-Upload copies of current class diagrams
-Update class attributes and methods for classes inside demo code
-Upload discussion .md file for notes
+Build UI / boundary classes __
+Build test cases __
+Build py3 files from initial .ipynb file
