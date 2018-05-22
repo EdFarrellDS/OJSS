@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 # Visual formatting options
@@ -11,7 +11,7 @@
 #display(HTML("<style>.container { width:98% !important; }</style>"))
 
 
-# In[2]:
+# In[ ]:
 
 
 # -------
@@ -64,7 +64,7 @@ def DROP_DATABASE(database_list):
 pd.options.mode.chained_assignment = None  # default='warn'
 
 
-# In[3]:
+# In[ ]:
 
 
 # Dataframe global variables
@@ -84,7 +84,7 @@ globUID = ''
 globRecommendedCategories = []
 
 
-# In[4]:
+# In[ ]:
 
 
 # TO CLEAR ALL CSV FILES; 
@@ -95,7 +95,7 @@ globRecommendedCategories = []
 # #### Boundary class
 # For initialising and running the program
 
-# In[5]:
+# In[ ]:
 
 
 class UI:
@@ -223,7 +223,7 @@ class UI:
 # # System Controller
 # #### Controller Class
 
-# In[6]:
+# In[ ]:
 
 
 # Defining SystemController class
@@ -233,7 +233,7 @@ class SystemController:
         global globUID
         if attempts > 3:
             print("\nYou've attempted to login unsuccessfully too many times, please create a new account.")
-            Account().create_account()
+            return Account().create_account()
         else:
             login_email = input("Please provide your email address, or type EXIT (in all caps) to exit the program.")
             # If email is detected
@@ -242,9 +242,10 @@ class SystemController:
                 if pword == "".join(globAccountsDF.password[globAccountsDF.email == login_email].tolist()):
                     globUID = "".join(globAccountsDF.UID[(globAccountsDF.email == login_email)].tolist())
                     print("\nSuccessfully logged in!")
+                    attempts = 0
                     return Menu.main_menu()
                 else:
-                    print("\nPassword incorrect, try again.")
+                    print("\nPassword incorrect, attempting to login again.")
                     return SystemController.login(attempts+1)
             # Exit statement
             elif login_email == "EXIT":
@@ -330,12 +331,22 @@ class SystemController:
         else:
             print("\nThere's an issue with your account - please login again after we've logged you out.")
             SystemController.logout()
+    
+    # Pointer to Account().update_skills
+    def update_skills():
+        return Account().update_skills()
+    
+    def create_job():
+        return Job().create_job()
+    
+    def gen_account():
+        return Account.gen_account()
 
 
 # # System Administrator Controller
 # #### Controller Class
 
-# In[7]:
+# In[ ]:
 
 
 class SystemAdministratorController:
@@ -364,7 +375,7 @@ class SystemAdministratorController:
 # # Account
 # #### Entity Class
 
-# In[8]:
+# In[ ]:
 
 
 class Account:
@@ -480,12 +491,12 @@ class Account:
             state = input("Do you wish to add to your current skills, or replace them entirely? Please enter either TRUE (to append) or FALSE (to rewrite).")
         # Receive new skills from user, append to list and then turn list to string.
         provision = input("Please provide your skills, separating each skillset by a comma.").split(',')
-        self.new_skills = [i.strip() for i in provision]
+        self.new_skills = [i.strip() for i in list(provision)]
         # Write to dataframe, and save CSV
         if state.lower() == "false":
             globAccountsDF['skills'][globAccountsDF.UID == globUID] = str(list(self.new_skills))
         else:
-            globAccountsDF['skills'][globAccountsDF.UID == globUID] = str([self.current_skills + self.new_skills])
+            globAccountsDF['skills'][globAccountsDF.UID == globUID] = str(list(set(self.current_skills + self.new_skills)))
         print("Updated values")
         globAccountsDF.to_csv("accounts_db.csv", index=False)
         print("Skills updated.")
@@ -495,7 +506,7 @@ class Account:
 # # Job
 # #### Entity Class
 
-# In[9]:
+# In[ ]:
 
 
 class Job:
@@ -558,7 +569,7 @@ class Job:
 # # Job Recruiter
 # #### Controller Class
 
-# In[10]:
+# In[ ]:
 
 
 class JobRecruiter:
@@ -582,7 +593,12 @@ class JobRecruiter:
     
     # Check the status of issued job interview invitations
     def check_invitations():
-        return globInvitationDF[globInvitationDF.recruiterUID == globUID]
+        display(globInvitationDF[globInvitationDF.recruiterUID == globUID])
+        state = input("Enter TRUE if you wish to send invitations, otherwise enter anything else to return to the menu.")
+        if state.lower() == 'true':
+            return Invitations.issue_invitation()
+        else:
+            return Menu.main_menu()
             
     # Publish a job so it is available for job seekers to see
     def publish_job():
@@ -620,7 +636,7 @@ class JobRecruiter:
 # # Job Seeker
 # #### Controller Class
 
-# In[11]:
+# In[ ]:
 
 
 class JobSeeker:
@@ -639,7 +655,7 @@ class JobSeeker:
             return JobSeeker.job_search()
         
         userskills = ast.literal_eval(globAccountsDF.skills[globAccountsDF.UID==globUID].tolist()[0])
-        if type(flatten(userskills)) == list:
+        if type(userskills[0]) == list:
             userskills = flatten(userskills)
         print(userskills)
         
@@ -743,7 +759,7 @@ class JobSeeker:
                 return "No interview invitations are recorded for your account."
 
 
-# In[12]:
+# In[ ]:
 
 
 #globUID = 'tetest0001s'
@@ -753,7 +769,7 @@ class JobSeeker:
 # # Documentation
 # #### Entity Class
 
-# In[13]:
+# In[ ]:
 
 
 class Documentation:
@@ -774,7 +790,7 @@ class Documentation:
 # # Menus
 # #### Boundary Class
 
-# In[14]:
+# In[ ]:
 
 
 class Menu:
@@ -805,7 +821,7 @@ class Menu:
               "7. Exit")
         request = input("Please select the number option that you wish to proceed with.")
         if request == '1':
-            Account().update_skills()
+            SystemController.update_skills()
         elif request == '2':
             JobSeeker.job_search()
         elif request == '3':
@@ -830,13 +846,13 @@ class Menu:
               "2. Publish Job\n"+
               "3. Remove Job\n"+
               "4. View Job Applicants\n"+
-              "5. Issue Interview Invitation\n"+
+              "5. Check and Send Interview Invitations\n"+
               "6. Suggest Job Category\n"+
               "7. Check current job listings\n"+
               "8. Exit")
         request = input("Please select the number option you wish to proceed with.")
         if request == '1':
-            Job().create_job()
+            SystemController.create_job()
         elif request == '2':
             JobRecruiter.publish_job()
         elif request == '3':
@@ -844,7 +860,7 @@ class Menu:
         elif request == '4':
             JobRecruiter.check_applicants()
         elif request == '5':
-            Invitations.issue_invitation()
+            JobRecruiter.check_invitations()
         elif request == '6':
             JobRecruiter.request_category()
         elif request == '7':
@@ -876,7 +892,7 @@ class Menu:
         if request.lower() == "login":
             SystemController.login()
         elif request.lower() == "new":
-            Account().gen_account()
+            SystemController.gen_account()
         elif request.lower() == 'exit':
             raise SystemExit
         else:
@@ -886,7 +902,7 @@ class Menu:
 # # Invitations
 # #### Entity Class
 
-# In[15]:
+# In[ ]:
 
 
 class Invitations:
@@ -932,14 +948,14 @@ class Invitations:
 # 
 # It then calls UI.run() to begin the login / account creation process.
 
-# In[16]:
+# In[ ]:
 
 
 UI.initialise()
 
 
-# In[17]:
+# In[ ]:
 
 
-#UI.run()
+UI.run()
 
