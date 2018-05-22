@@ -1,945 +1,1090 @@
-
-# coding: utf-8
-
-# In[1]:
-
-
-# Visual formatting options
-
-# Sets the display to 98% of the window's max width.
-#from IPython.core.display import display, HTML
-#display(HTML("<style>.container { width:98% !important; }</style>"))
-
-
-# In[2]:
-
-
-# -------
-# Imports
-# -------
-
-# Top-level, and always useful
-import re
-import os
-from collections import Counter
-from IPython.display import display
-import sys
-from copy import copy as sCopy
-
-# Misc
-import random
-import ast
-
-# Dataframes, yo!
-import pandas as pd
-import numpy as np
-
-# ---------
-# Functions
-# ---------
-# Flatten list of lists
-def flatten(list_of_lists):
-    return [item for sublist in list_of_lists for item in sublist]
-
-# Append items to list in-line, returning a list with appended items
-def ret_append(lst, item):
-    lst.append(item)
-    return lst
-
-def DROP_DATABASE(database_list):
-    for database in database_list:
-        if ".csv" in database:
-            assert database in os.listdir(os.getcwd())
-            os.remove(database)
-            print("\nFile",database,"successfully deleted.")
-        else:
-            pass
-
-# -----------------
-# Misc declarations
-# -----------------
-# Pandas declarations
-
-# Hide Chained Assignment (SettingWithCopy warning)
-pd.options.mode.chained_assignment = None  # default='warn'
-
-
-# In[3]:
-
-
-# Dataframe global variables
-globAccountsDF = "accounts_db.csv"
-globJobsDF = "jobs_db.csv"
-globJobCatDF = "job_categories.csv"
-globDocumentationDF = "job_documents.csv"
-globInvitationDF = "job_invitation.csv"
-glob_all_dataframes = [globAccountsDF, globJobsDF, globJobCatDF, globDocumentationDF, globInvitationDF]
-glob_all_df_names = ["accounts_db.csv", "jobs_db.csv", "job_categories.csv", "job_documents.csv", "job_invitation.csv"]
-
-local_files = os.listdir(os.getcwd())
-
-# Global variables
-#globUID = 'tetest0001s'
-globUID = ''
-globRecommendedCategories = []
-
-
-# In[4]:
-
-
-# TO CLEAR ALL CSV FILES; 
-#DROP_DATABASE(glob_all_df_names)
-
-
-# # UI
-# #### Boundary class
-# For initialising and running the program
-
-# In[5]:
-
-
-class UI:
-#Checks whether the data is in the current working directory; if not, it builds new database files to work with.
-    def initialise():
-        global globAccountsDF
-        global globJobsDF
-        global globJobCatDF
-        global globDocumentationDF
-        global globInvitationDF
-        global glob_all_dataframes
-        global glob_all_df_names
-        global globUID
-
-        local_files = os.listdir(os.getcwd())
-
-        # Checks whether database is present in CWD; if not, generate a new database
-        for dbase in glob_all_dataframes:
-            if dbase in os.listdir(os.getcwd()):
-                print(dbase, "detected.")
-                dbase = pd.read_csv(dbase)
-            else:
-                print(dbase, "not detected.")   
-
-        # Handling missing databases
-        local_files = os.listdir(os.getcwd())
-        # If the accounts database is not present
-        if "accounts_db.csv" not in local_files:
-            demo_seeker = {'firstName':'Ted',
-                           'lastName':'Testable',
-                           'password':'testerted',
-                           'is_seeker':True,
-                           'UID':['tetest0001s'],
-                           'email':'tester@jobapps.org',
-                           'skills':"['Systems Testing', 'Network Security', 'Data Science', 'Python']"}
-            demo_recruiter = {'firstName':'Rick',
-                              'lastName':'Recruitable',
-                              'password':'recruiterrick',
-                              'is_seeker':False,
-                              'UID':['rirecr0001r'],
-                              'email':'recruiter@jobapps.org',
-                              'skills':"['Recruiting', 'People Management']"}
-            demo_admin = {'firstName':'Adam',
-                              'lastName':'Administrator',
-                              'password':'adminadam',
-                              'is_seeker':False,
-                              'UID':['adadmi0001a'],
-                              'email':'admin@jobapps.org',
-                              'skills':"['Database Management', 'System Controller Development']"}
-            globAccountsDF = pd.concat([pd.DataFrame(demo_seeker), pd.DataFrame(demo_recruiter), pd.DataFrame(demo_admin)])
-            globAccountsDF = globAccountsDF[['UID', 'firstName', 'lastName', 'email', 'password', 'is_seeker', 'skills']]
-            globAccountsDF.to_csv("accounts_db.csv", index=False)
-            print("\nAccounts database generated.")
-
-        # If the job listing database is missing
-        if "jobs_db.csv" not in local_files:
-            demo_job = {'jobName':'Python Developer',
-                        'jobCreatorUID':'rirecr0001r',
-                        'jobType':'IT/Technology',
-                        'jobSalary':'65000',
-                        'jobUID':['IT000001'],
-                        'jobAdvertised':True,
-                        'jobKeyword':"['Python','Developer','Melbourne','Full-Time', 'ClosedDemo']",
-                        'jobSkillset':"['Python', 'Full-Stack', 'Team Experience']",
-                        'applicants':"['tetest0001s', 'value0001s', 'tetest0002s']"}
-            globJobsDF = pd.DataFrame(demo_job)
-            globJobsDF = globJobsDF[['jobName','jobCreatorUID','jobType','jobSalary','jobUID','jobAdvertised','jobKeyword','jobSkillset','applicants']]
-            globJobsDF.to_csv("jobs_db.csv", index=False)
-            print("\nJobs database generated.")
-
-        # If the job categories database is missing
-        if "job_categories.csv" not in local_files:
-            demo_job_cats = {'jobCategories':['IT/Technology', 'Finance/Banking', 'Hospitality', 'Construction',
-                                              'Healthcare', 'Education', 'Agriculture', 'Other Service Industry',
-                                              'Communications / PR', 'Accounting', 'Legal Profession',
-                                              'Other Professional Services']}
-            globJobCatDF = pd.Series(demo_job_cats)
-            globJobCatDF.to_csv("job_categories.csv", index=False)
-            print("\nJob Categories database generated.")
-
-        # If the Job Documentation Dataframe is missing
-        if "job_documents.csv" not in local_files:
-            demo_documentation = {'jobID':['IT000001'],
-                                 'seekerID':'tetest0001s',
-                                 'documentsUploaded':"['Ted_resume.docx', 'Ted_CoverLetter.docx']"}
-            globDocumentationDF = pd.DataFrame(demo_documentation, index=[0])
-            globDocumentationDF = globDocumentationDF[['jobID', 'seekerID', 'documentsUploaded']]
-            globDocumentationDF.to_csv("job_documents.csv", index=False)
-            print("\nJob Documentation database generated.")
-
-        # If the job invitation dataframe is missing
-        if "job_invitation.csv" not in local_files:
-            demo_invitation = {'recruiterUID':'rirecr0001r',
-                              'seekerUID':'tetest0001s',
-                               'jobUID':['IT000001'],
-                              'location':'123 Main Street, Melbourne VIC 3000',
-                              'time':'12:65pm, 31/02/2019',
-                              'accepted':True}
-            globInvitationDF = pd.DataFrame(demo_invitation, index=[0])
-            globInvitationDF = globInvitationDF[['recruiterUID', 'seekerUID','jobUID', 'location', 'time', 'accepted']]
-            globInvitationDF.to_csv("job_invitation.csv", index=False)
-            print("\nJob Invitation database generated.")
-
-        # Global variables
-        globUID = ''
-        globRecommendedCategories = []
-
-        # Setting database links
-        globAccountsDF = pd.read_csv("accounts_db.csv")
-        globJobsDF = pd.read_csv("jobs_db.csv")
-        globJobCatDF = pd.read_csv("job_categories.csv", squeeze=True)
-        globDocumentationDF = pd.read_csv("job_documents.csv")
-        globInvitationDF = pd.read_csv("job_invitation.csv")
-    
-    # Initialises the data, and then begins running the OJSS platform via Menu.splash_menu()
-    def start_ojss():
-        UI.initialise()
-        Menu.splash_menu()
-    
-    # Calls Menu.splash_menu
-    def run():
-        Menu.splash_menu()
-
-
-# # System Controller
-# #### Controller Class
-
-# In[6]:
-
-
-# Defining SystemController class
-class SystemController:
-    # Logs users into the system
-    def login(attempts = 0):
-        global globUID
-        if attempts > 3:
-            print("\nYou've attempted to login unsuccessfully too many times, please create a new account.")
-            Account().create_account()
-        else:
-            login_email = input("Please provide your email address, or type EXIT (in all caps) to exit the program.")
-            # If email is detected
-            if len(globAccountsDF[(globAccountsDF.email == login_email)]) != 0:
-                pword = input("Please enter your password.")
-                if pword == "".join(globAccountsDF.password[globAccountsDF.email == login_email].tolist()):
-                    globUID = "".join(globAccountsDF.UID[(globAccountsDF.email == login_email)].tolist())
-                    print("\nSuccessfully logged in!")
-                    return Menu.main_menu()
-                else:
-                    print("\nPassword incorrect, try again.")
-                    return SystemController.login(attempts+1)
-            # Exit statement
-            elif login_email == "EXIT":
-                raise SystemExit
-            # Handle missing/incorrect email. Offer retry (limited attempts) or generate account.
-            else:
-                print("\nEmail not detected. Enter 1 to retry, or anything else to create an account.")
-                state = input()
-                if state == "1":
-                    SystemController.login(attempts+1)
-                else:
-                    Account().gen_account()
-    
-    # Logs users out.
-    def logout():
-        global globUID
-        globUID = ''
-        print("\nLogged out. Please login to continue.")
-        return Menu.splash_menu()   
-    
-    # Matches job seekers to jobs, based on their skills.
-    def matching_scores():
-        if globUID == '':
-            return SystemController.login()
-        userUID = globUID
-        # If the requester is a job seeker
-        match_term_count = 0
-        score = 0
-        if userUID[-1] == 's':
-            # If no jobs are available to apply for
-            state = True
-            if len(globJobsDF[globJobsDF.jobAdvertised == True]) == 0:
-                print("\nWARNING:\nNo jobs are currently available to apply for, so we've returned you to the main menu. Please try later!\n")
-                state = False
-            if state is False:
-                return Menu.main_menu()
-            
-            # Display the list of available industries / job types. Ensures the industry selection is correct.
-            print(globJobsDF.jobType.unique().tolist())
-            industry = input("Please enter the industry that you're interesting in having us match you with.")
-            if industry not in globJobsDF.jobType.unique().tolist():
-                return SystemController.matching_scores()
-            else:
-                pass
-            
-            # Display their skills and keywords chosen at account creation
-            try:
-                skills = ast.literal_eval(globAccountsDF.skills[globAccountsDF.UID == globUID][0])
-            except (KeyError, ValueError):
-                skills = ast.literal_eval(globAccountsDF.skills[globAccountsDF.UID == globUID].tolist()[0])
-                        
-            # Build the best possible score, based on the values provide by the user.
-            iterscore = ['No Match', 0]
-            # Build a new dataframe with only the jobs that can be applied for in the dataframe, where the user has not already applied for that job.
-            relevant_jobs = globJobsDF[(globJobsDF.jobAdvertised == True)
-                                       & (globJobsDF.jobType == industry)
-                                       & (globJobsDF.applicants.str.contains(userUID)==False)].reset_index(drop=True)
-            if len(relevant_jobs) == 0:
-                print("Your best-match job cannot be identified, and it appears you've applied for all available jobs.")
-                return Menu.main_menu()
-            # Iterate through the new dataframe
-            for job in range(0,len(relevant_jobs)):
-                count = 0
-                jobskills_ = relevant_jobs.jobSkillset[relevant_jobs.index == job][0]
-                for term in skills:
-                    if term in jobskills_:
-                        count += 1
-                score = count / len(jobskills_)
-                if score > iterscore[1]:
-                    iterscore[1] = score
-                    iterscore[0] = relevant_jobs.jobUID[relevant_jobs.index == job][0]
-                else:
-                    pass
-            if iterscore[1] > 0:
-                print("\nYour optimal job can be found by applying for job UID", iterscore[0])
-                display(globJobsDF[[i for i in globJobsDF.columns.tolist() if i != "applicants"]][globJobsDF.jobUID == iterscore[0]])
-                return JobSeeker.job_apply()
-            else:
-                print("\nSorry, we couldn't identify a job to recommend based on the details you provided. Please try again some other time!")
-                return Menu.main_menu()
-        
-        # If the requester cannot be identified
-        else:
-            print("\nThere's an issue with your account - please login again after we've logged you out.")
-            SystemController.logout()
-
-
-# # System Administrator Controller
-# #### Controller Class
-
-# In[7]:
-
-
-class SystemAdministratorController:
-    def update_categories():
-        if globUID[-1] == 'a': # Check that the logged-in user is an administrator
-            global globJobCatDF
-            global globRecommendedCategories
-            if len(globRecommendedCategories) > 0:
-                print("\nThe following job categories have been requested by job recruiters.")
-                print(globRecommendedCategories)
-            values = input("Input the new job categories, indicating the start and finish of each category with a comma").split(",")
-            cats = [i.strip() for i in globJobCatDF.name[2:-2].replace("'", "").split(",")]
-            update = [i.strip() for i in values] + cats
-            values = pd.Series({"Job Categories":set(update)})
-            globJobCatDF = values
-            globJobCatDF.to_csv("job_categories.csv", index=False)
-            globJobCatDF = pd.read_csv("job_categories.csv", squeeze=True)
-            globRecommendedCategories = []
-            return "Job categories successfully updated, and category request store has been wiped."
-        else:
-            print("\nYou don't have permission to do that. Please logout, and log back in with an admin account.")
-            return SystemController.logout()
-        
-
-
-# # Account
-# #### Entity Class
-
-# In[8]:
-
-
-class Account:
-    def __init__(self):
-        self.data = []
-        
-    def gen_account(self):
-        global globAccountsDF
-        self.first = input("What is your first name? ")
-        self.last = input("What is your surname? ")
-        self.email =  input("What is your email address?")
-        if len(globAccountsDF[(globAccountsDF.email == self.email)]) != 0:
-            print("\n\nWARNING: An account with the email is recorded in the system - please login, or contact us on [GENERIC_EMAIL] if you"+
-                  " have forgotten your password.")
-            return Menu.splash_menu()
-        else:
-            pass
-        check_state = False
-        while check_state == False:
-            self.password = input("Please type your password: ")
-            self.pass_check = input("Please type your password again to confirm: ")
-            if self.password == self.pass_check:
-                check_state = True
-            else:
-                print("\nPasswords did not match; please try again.")
-
-        # Set seeker status
-        self.is_seeker = Account.seeker()        
-        
-        # Generate unique ID
-        self.id_string = self.first.lower()[0:2] + self.last.lower()[0:4]
-        if len(self.id_string) < 6:
-            self.id_string += (6-len(self.id_string))*'x'
-        # Counts the occurence count of the user ID, add one, and use this for numbering.
-        self.id_string += (str(len(globAccountsDF[globAccountsDF.UID.str.contains(self.id_string)])+1).zfill(4))
-
-        # 's'/'r' seeker/recruiter substring
-        if self.is_seeker:
-            self.id_string += ('s')
-        else:
-            self.id_string += ('r')
-        
-        # Filling in skills
-        self.new_skills = input("Please enter any skills you wish to add to your account, separating each with a comma.").split(',')
-        
-        print("\nAll details are approved for submission.")
-        
-        self.details = {'firstName':self.first,
-                        'lastName':self.last,
-                        'password':self.password,
-                        'is_seeker':self.is_seeker,
-                        'UID':self.id_string,
-                        'email':self.email,
-                        'skills':str(self.new_skills)}
-
-        globAccountsDF.loc[len(globAccountsDF)] = self.details
-        globAccountsDF.to_csv("accounts_db.csv", index=False)
-        print("\nNew account created!")
-        return Menu.splash_menu()
-    
-    # Check seeker status
-    def seeker():
-        is_seeker = input("Are you a jobseeker? If so, please type True. If not, please type False. ")
-        if is_seeker.lower() == 'true':
-            is_seeker = True
-        elif is_seeker.lower() == 'false':
-            is_seeker = False
-        else: # Recursive request if not True/False
-            print("\nNot a recognised input; please try again.")
-            is_seeker = Account.seeker()
-        return is_seeker
-    
-    def update_account(self, uid = globUID):
-        global globAccountsDF
-        state = False
-        while state == False:
-            state = input("What would you like to update? \n1. Email address\n2. Password\n3. Skills\n4. Exit\nEnter the relevant number.")
-            if state == "4":
-                state = True
-            else:
-                if state == "1":
-                    self.newemail = input("Pleases enter your new email.")
-                    self.emailcheck = input("Please re-enter your new email.")
-                    if self.newemail == self.emailcheck:
-                        globAccountsDF['email'][globAccountsDF.UID == uid] = self.newemail
-                        globAccountsDF.to_csv("accounts_db.csv", index=False)
-                        return "Email updated."
-                    else:
-                        print("\nEmails entered did not match, please try again.")
-                        return Account().update_account()
-                elif state == "2":
-                    return "Function not yet available."
-                elif state == "3":
-                    return Account().update_skills()
-        
-    # Prompt users to provide their skill sets.
-    def update_skills(self):
-        global globAccountsDF
-        userUID = globUID
-        # Pull existing skillset if it is not empty, otherwise use an empty list
-        if not globAccountsDF.skills[globAccountsDF.UID == globUID].tolist() == ['[]']:
-            try:
-                self.current_skills = ast.literal_eval(globAccountsDF.skills[globAccountsDF.UID == userUID][0])
-                #print("Option 1")
-            except KeyError:
-                self.current_skills = ast.literal_eval(str(globAccountsDF.skills[globAccountsDF.UID == userUID].tolist())[2:-2])
-                #print("Option 2")
-            print("Your existing skills are listed as;", self.current_skills)
-        else:
-            self.current_skills = []
-        state = 'hgfghfj'
-        while state.lower() not in ['true', 'false']:
-            state = input("Do you wish to add to your current skills, or replace them entirely? Please enter either TRUE (to append) or FALSE (to rewrite).")
-        # Receive new skills from user, append to list and then turn list to string.
-        provision = input("Please provide your skills, separating each skillset by a comma.").split(',')
-        self.new_skills = [i.strip() for i in provision]
-        # Write to dataframe, and save CSV
-        if state.lower() == "false":
-            globAccountsDF['skills'][globAccountsDF.UID == globUID] = str(list(self.new_skills))
-        else:
-            globAccountsDF['skills'][globAccountsDF.UID == globUID] = str([self.current_skills + self.new_skills])
-        print("Updated values")
-        globAccountsDF.to_csv("accounts_db.csv", index=False)
-        print("Skills updated.")
-        return Menu.main_menu()    
-
-
-# # Job
-# #### Entity Class
-
-# In[9]:
-
-
-class Job:
-    def __init__(self):
-        self.data = []
-        
-    # Generate a new job. 'job' argument exists for handling incorrect inputs.
-    def create_job(self, job=""):
-        global globJobsDF
-        if job == "":
-            self.job_name = input("Please provide name of job.")
-        else:
-            self.job_name = job
-        
-        # Return all available job categories
-        job_cats = ast.literal_eval(globJobCatDF.name)
-        print(job_cats)
-        self.job_type = input("Please enter the relevant category from the list above, or type EXIT to leave.")
-        if self.job_type in job_cats:
-            pass
-        elif self.job_type.lower() == "exit":
-            return Menu.main_menu()
-        else:
-            print("\nInput not recognised, please try again.")
-            return Job().create_job(job=self.job_name)
-        
-        # Input details, store in dict, then append to end of jobs dataframe
-        print("\nEntering EXIT in any of the following states will return you to the menu once all inputs are taken.")
-        self.job_salary = 'a'
-        while not self.job_salary.replace(',', '').isnumeric():
-            self.job_salary = input("Please provide the salary of the job (in whole dollars per annum).")
-        self.job_keyword = input("Please provide job keywords, separating each keyword by a comma.").split(',')
-        self.job_skillsets = input("Please provide job skillsets, separating each skillset by a comma.").split(',')
-        self.job_id = self.job_type[:2] + str(len(globJobsDF[globJobsDF.jobUID.str.contains(self.job_type[:2])])+1).zfill(6)
-        
-        # Check for exit requests.
-        for i in [self.job_salary, self.job_keyword, self.job_skillsets]:
-            if type(i) == str:
-                if i.lower() == 'exit':
-                    return Menu.main_menu()
-        
-        self.details = {'jobName':self.job_name,
-                        'jobCreatorUID':globUID,
-                        'jobType':self.job_type,
-                        'jobSalary':self.job_salary,
-                        'jobUID':self.job_id,
-                        'jobAdvertised':False,
-                        'jobKeyword':str(self.job_keyword),
-                        'jobSkillset':str(self.job_skillsets),
-                        'applicants':'[]'}
-        
-        # Save to the CSV database
-        globJobsDF.loc[len(globJobsDF)] = self.details
-        globJobsDF.to_csv("accounts_db.csv", index=False)
-        print("New job created successfully - don't forget to advertise this job.")
-        return Menu.main_menu()
-    
-
-
-# # Job Recruiter
-# #### Controller Class
-
-# In[10]:
-
-
-class JobRecruiter:
-    # Display all jobs created by the logged-in recruiter
-    def get_jobs():
-        display(globJobsDF[globJobsDF.jobCreatorUID == globUID])
-        return Menu.main_menu()
-    
-    # Return the applicant UIDs for applicants to a given (requested) job UID.
-    def check_applicants():
-        jobUID = input("Please enter the job UID for the job you wish to see applicants for, or enter MENU to return to the menu.")
-        if jobUID.lower() == "menu":
-            return Menu.main_menu()
-        if jobUID not in globJobsDF.jobUID.unique().tolist():
-            return JobRecruiter.get_jobs()
-        if len(globJobsDF.applicants[globJobsDF.jobUID == jobUID]) <= 2: #Indicates no job seekers
-            print("\nNo applicants detected, please try with another job from the list below.")
-            return JobRecruiter.get_jobs()
-        else:
-            applicants = [i.strip() for i in globJobsDF["applicants"][(globJobsDF.jobCreatorUID == globUID) & (globJobsDF.jobUID == jobUID)][0].replace("[", "").replace("]", "").replace("'", "").split(",")]
-    
-    # Check the status of issued job interview invitations
-    def check_invitations():
-        return globInvitationDF[globInvitationDF.recruiterUID == globUID]
-            
-    # Publish a job so it is available for job seekers to see
-    def publish_job():
-        print(JobRecruiter.get_jobs())
-        jobUID = input("Please enter the job UID for the job you wish to remove, or enter MENU to return to the menu.")
-        if jobUID.lower() == "menu":
-            return Menu.main_menu()
-        if jobUID not in globJobsDF.jobUID.unique().tolist():
-            return JobRecruiter.get_jobs()
-        else:
-            globJobsDF.jobAdvertised[globJobsDF.jobUID == jobUID] = True
-            globJobsDF.to_csv("jobs_db.csv", index=False)
-            return "Job successfully advertised."
-        
-    # Request a new job category is added to the list of available options.
-    def request_category():
-        global globRecommendedCategories
-        categories = input("Please enter your requested job categories, separating each with a comma.").split(",")
-        globRecommendedCategories += categories
-        return "Categories request has been sent!"
-        
-    # "Remove" a job by setting its advertise status to False, i.e. it will no longer show in job searches.
-    def remove_job():
-        jobUID = input("Please enter the job UID for the job you wish to remove, or enter MENU to return to the menu.")
-        if jobUID.lower() == "menu":
-            return Menu.main_menu()
-        if jobUID not in globJobsDF.jobUID.unique().tolist():
-            return JobRecruiter.get_jobs()
-        else:
-            globJobsDF.jobAdvertised[globJobsDF.jobUID == jobUID] = False
-            globJobsDF.to_csv("jobs_db.csv", index=False)
-            return "Job successfully delisted."
-
-
-# # Job Seeker
-# #### Controller Class
-
-# In[11]:
-
-
-class JobSeeker:
-    # Allow jobseekers to search for a job based on their skills.
-    def job_search():
-        userUID = globUID
-        print(ast.literal_eval(globJobCatDF.name))
-        jobtype = input("Provide the job type you would like to search for, from the list above.")
-        
-        # If no jobs exist for that category;
-        curr_jobs = globJobsDF.jobType.unique().tolist()
-        if jobtype not in curr_jobs:
-            print("\nSorry, we don't have any jobs for that job category.")
-            print("\nWe currently have jobs available in the following sectors;")
-            print(curr_jobs)
-            return JobSeeker.job_search()
-        
-        userskills = ast.literal_eval(globAccountsDF.skills[globAccountsDF.UID==globUID].tolist()[0])
-        if type(flatten(userskills)) == list:
-            userskills = flatten(userskills)
-        print(userskills)
-        
-        jobskills = '2189gdnsgi1099' # Nonsense string
-        while jobskills not in userskills:
-            jobskills = input("Provide which primary skill you would like to search with, from your skillset listed above. Note that only one skill can be selected. To leave, please enter EXIT.").split(",")[0]
-            if jobskills.lower() == 'exit':
-                return Menu.main_menu()
-        # Pull available jobs. Second catch for whether jobs are available.
-        jobs_avail = globJobsDF[[i for i in globJobsDF if i != 'applicants']][(globJobsDF.jobType == jobtype) & (globJobsDF.jobSkillset.str.contains(jobskills)) & (globJobsDF.applicants.str.contains(userUID)==False)]
-        if len(jobs_avail) == 0:
-            print("\nNo jobs available, based on your search terms. Returning you to the menu now.")
-            return Menu.main_menu()
-        else:
-            display(jobs_avail)
-            state = '2189gdnsgi1099' # Nonsense string
-            while state.lower() not in ["apply", "exit"]:
-                state = input("To apply for any of these jobs, please enter APPLY, or enter EXIT to return to the menu.")
-                if state.lower() == "exit":
-                    return Menu.main_menu()
-                elif state.lower() == "apply":
-                    JobSeeker.job_apply()
-                    
-    def industry_search():
-        userUID = globUID
-        print(ast.literal_eval(globJobCatDF.name))
-        jobtype = input("Provide the job type you would like to search for, from the list above.")
-        
-        # If no jobs exist for that category;
-        curr_jobs = globJobsDF.jobType.unique().tolist()
-        if jobtype not in curr_jobs:
-            print("\nSorry, we don't have any jobs for that job category.")
-            print("\nWe currently have jobs available in the following sectors;")
-            print(curr_jobs)
-            return JobSeeker.industry_search()
-        
-        # Pull available jobs. Second catch for whether jobs are available.
-        jobs_avail = globJobsDF[[i for i in globJobsDF if i != 'applicants']][(globJobsDF.jobType == jobtype) & (globJobsDF.applicants.str.contains(userUID)==False) & (globJobsDF.jobAdvertised == True)]
-        if len(jobs_avail) == 0:
-            print("\nYou've applied for all available jobs in the industry. Returning you to the menu now.")
-            return Menu.main_menu()
-        
-        # Ask whether the searcher wants to apply to any of the jobs.
-        state = '2189gdnsgi1099'
-        while state.lower() not in ['true', 'false']:
-            state = input("Please enter TRUE to apply for one of these jobs, otherwise enter EXIT to return to the menu.")
-        if state.lower() == 'true':
-            return JobSeeker.job_apply()
-        else:
-            return Menu.main_menu()
-    
-    # Apply for jobs. Requires job seeker knows the job UID.
-    def job_apply():
-        global globJobsDF
-        jobapply = input("Please provide the job UID that you wish to apply for.")
-        if jobapply not in globJobsDF.jobUID.unique().tolist():
-            state = ("Job ID not detected. Enter RETRY to attempt again, SEARCH to search for jobs, or EXIT to return to the menu.")
-            if state.lower() == "retry":
-                JobSeeker.job_apply()
-            elif state.lower() == "search":
-                JobSeeker.job_search()
-            else:
-                Menu.main_menu()
-        else:
-            target_applicants = ast.literal_eval(globJobsDF.applicants[globJobsDF.jobUID == jobapply][0])
-            if globUID in target_applicants:
-                print("You've already applied for that job, please try again.")
-                return Menu.main_menu()
-            else:
-                globJobsDF.applicants[globJobsDF.jobUID == jobapply] = str(target_applicants + [globUID])
-                globJobsDF.to_csv("jobs_db.csv", index=False)
-                print("You've successfully applied to your selected job.")
-        return Menu.main_menu()
-    
-    # Check jobs that the seeker has applied for
-    def job_check():
-        applied_jobs = globJobsDF[[i for i in globJobsDF.columns.tolist() if i != 'applicants']][globJobsDF.applicants.str.contains(globUID)]
-        if len(applied_jobs) > 0:
-            display(globJobsDF[[i for i in globJobsDF.columns.tolist() if i != 'applicants']][globJobsDF.applicants.str.contains(globUID)])
-        else:
-            print("\nYou haven't applied for any jobs!")
-        return Menu.main_menu()
-    
-    # Check for any interview requests that have been sent
-    def invitation_check():
-        invites = globInvitationDF[(globInvitationDF.seekerUID == globUID) & (globInvitationDF.accepted == False)]
-        accepted = globInvitationDF[(globInvitationDF.seekerUID == globUID) & (globInvitationDF.accepted == True)]
-        if len(invites) > 0:
-            print("\n/nHere are the interview invitations requests waiting for your approval.")
-            display(invites)
-            if input("Please enter YES if you wish to accept/reject any of these invitations.").lower() == 'yes':
-                return Invitations.accept_invitation()
-            else:
-                return globInvitationDF[globInvitationDF.seekerUID == globUID]
-        else:
-            if len(accepted) > 0:
-                print("\nHere are the interview invitations which you have accepted.")
-                display(accepted)
-                return "You've accepted all interview invitations sent to you."
-            else:
-                return "No interview invitations are recorded for your account."
-
-
-# In[12]:
-
-
-#globUID = 'tetest0001s'
-#JobSeeker.job_search()
-
-
-# # Documentation
-# #### Entity Class
-
-# In[13]:
-
-
-class Documentation:
-    def __init__(self):
-        self.documents = {}
-        
-    def get_doc(self, job_id, seeker_id):
-        self.doc_name = input("Please insert all file names including extenstions, seperated by a comma.").split(',')
-        self.doc_name = [i.strip() for i in self.doc_name]
-        details = {'jobID': job_id,
-                  'seekerID': seeker_id,
-                  'documentsUploaded': str(self.doc_name)}
-        globDocumentationDF.loc[len(df)] = details
-        globDocumentationDF.to_csv("accounts_db.csv", index=False)
-        return "Documents uploaded"
-
-
-# # Menus
-# #### Boundary Class
-
-# In[14]:
-
-
-class Menu:
-    # Catchall menu; uses UID identifying character to determine which menu to show.
-    def main_menu():
-        global globUID
-        UID = globUID
-        if UID[-1] == 's':
-            Menu.seeker_menu()
-        elif UID[-1] == 'r':
-            Menu.recruiter_menu()
-        elif UID[-1] == 'a':
-            Menu.admin_menu()
-        else:
-            print("\nUID not recognised.")
-            globUID = ''
-            Menu.splash_menu()
-    
-    # Only accessible by job seekers.
-    def seeker_menu():
-        print("\nAvailable Options:\n"+
-              "1. Update Skills\n"+
-              "2. Search for Jobs\n"+
-              "3. See Current Interview Invitations\n"+
-              "4. See Current Job Applications\n"+
-              "5. Run a generalised job search\n"+
-              "6. Run our recommendation platform's job suggester\n"+
-              "7. Exit")
-        request = input("Please select the number option that you wish to proceed with.")
-        if request == '1':
-            Account().update_skills()
-        elif request == '2':
-            JobSeeker.job_search()
-        elif request == '3':
-            JobSeeker.invitation_check()
-        elif request == '4':
-            JobSeeker.job_check()
-        elif request == '5':
-            JobSeeker.industry_search()
-        elif request == '6':
-            SystemController.matching_scores()
-        elif request == '7':
-            SystemController.logout()
-            return
-        else:
-            print("\nInput not recognised.")
-            return Menu.seeker_menu()
-    
-    # Only accessible by recruiters.
-    def recruiter_menu():
-        print("\nAvailable Options:\n"+
-              "1. Create Job\n"+
-              "2. Publish Job\n"+
-              "3. Remove Job\n"+
-              "4. View Job Applicants\n"+
-              "5. Issue Interview Invitation\n"+
-              "6. Suggest Job Category\n"+
-              "7. Check current job listings\n"+
-              "8. Exit")
-        request = input("Please select the number option you wish to proceed with.")
-        if request == '1':
-            Job().create_job()
-        elif request == '2':
-            JobRecruiter.publish_job()
-        elif request == '3':
-            JobRecruiter.delete_job()
-        elif request == '4':
-            JobRecruiter.check_applicants()
-        elif request == '5':
-            Invitations.issue_invitation()
-        elif request == '6':
-            JobRecruiter.request_category()
-        elif request == '7':
-            JobRecruiter.get_jobs()
-        elif request == '8':
-            SystemController.logout()
-        else:
-            print("\nInput not recogcnised.")
-            return Menu.recruiter_menu()
-    
-    # Only accessible by admins.
-    def admin_menu():
-        print("\nAvailable Options:\n"+
-             "1. Create Job Category:\n"+ 
-             "2. Exit")
-        request = input("Please select the number option you wish to proceed with.")
-        if request == '1':
-            SystemAdministratorController.update_categories()
-        elif request == '2':
-            SystemController.logout()
-        else:
-            print("\nInput not recognised.")
-            return Menu.admin_menu()
-    
-    # First menu people come across, or if their UID identifying character is corrupted.
-    def splash_menu():
-        print("\nDo you wish to log in, start a new account, or close the program?")
-        request = input("Please enter either LOGIN, NEW, or EXIT.")
-        if request.lower() == "login":
-            SystemController.login()
-        elif request.lower() == "new":
-            Account().gen_account()
-        elif request.lower() == 'exit':
-            raise SystemExit
-        else:
-            Menu.splash_menu()
-
-
-# # Invitations
-# #### Entity Class
-
-# In[15]:
-
-
-class Invitations:
-    def __init__(self):
-        self.data = []
-        
-    def issue_invitation():
-        self.jobUID = input("Please provide the job UID for which you wish to send interview requests to applicants.")
-        jobselection = globJobsDF.applicants[globJobsDF.jobUID == self.jobUID].tolist()
-        print(jobselection)
-        self.applicant = input("Please input the applicant UID that you wish to apply for.")
-        if self.applicant not in jobselection:
-            print("\nApplicant ID not recognised, please try again.")
-            return Menu.main_menu()
-        else:
-            pass
-        self.location = input("Please provide the address you wish to have the interview at.")
-        self.time = input("Please provide the time that you wish to meet the applicant.")
-        
-    def accept_invitation():
-        self.jobUID = input("Please enter the job UID you wish to respond to an invitation for.")
-        if self.jobUID in globInvitationDF.jobUID[globInvitationDF.seekerID == globUID].unique.tolist():
-            pass
-        else:
-            print("\nYou're not able to respond to interview requests for that job.")
-            return Invitations().accept_invitation()
-        state = input("Do you wish to accept the invitation? Please enter YES (to accept) or NO (to turn down).")
-        if state.lower == "true":
-            globInvitationDF.accepted[(globInvitationDF.seekerID == globUID) & (globInvitationDF.jobID)] = True
-            globInvitationDF.to_csv("job_invitation.csv", index=False)
-            return "Invitation successfully applied for."
-        elif state.lower == "false":
-            globInvitationDF.accepted[(globInvitationDF.seekerID == globUID) & (globInvitationDF.jobID)] = False
-            globInvitationDF.to_csv("job_invitation.csv", index=False)
-            return "Invitation successfully turned down."
-        else:
-            return Invitations().accept_invitation()
-
-
-# # Testing
-# 
-# Running this section will call the UI.initialise() method to generate and setup the databases (if this is your first time running the program), or otherwise will proceed to setting up the databases if their root CSV files are already present in the working directory.
-# 
-# It then calls UI.run() to begin the login / account creation process.
-
-# In[16]:
-
-
-UI.initialise()
-
-
-# In[17]:
-
-
-#UI.run()
-
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Visual formatting options\n",
+    "\n",
+    "# Sets the display to 98% of the window's max width.\n",
+    "#from IPython.core.display import display, HTML\n",
+    "#display(HTML(\"<style>.container { width:98% !important; }</style>\"))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# -------\n",
+    "# Imports\n",
+    "# -------\n",
+    "\n",
+    "# Top-level, and always useful\n",
+    "import re\n",
+    "import os\n",
+    "from collections import Counter\n",
+    "from IPython.display import display\n",
+    "import sys\n",
+    "from copy import copy as sCopy\n",
+    "\n",
+    "# Misc\n",
+    "import random\n",
+    "import ast\n",
+    "\n",
+    "# Dataframes, yo!\n",
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "\n",
+    "# ---------\n",
+    "# Functions\n",
+    "# ---------\n",
+    "# Flatten list of lists\n",
+    "def flatten(list_of_lists):\n",
+    "    return [item for sublist in list_of_lists for item in sublist]\n",
+    "\n",
+    "# Append items to list in-line, returning a list with appended items\n",
+    "def ret_append(lst, item):\n",
+    "    lst.append(item)\n",
+    "    return lst\n",
+    "\n",
+    "def DROP_DATABASE(database_list):\n",
+    "    for database in database_list:\n",
+    "        if \".csv\" in database:\n",
+    "            assert database in os.listdir(os.getcwd())\n",
+    "            os.remove(database)\n",
+    "            print(\"\\nFile\",database,\"successfully deleted.\")\n",
+    "        else:\n",
+    "            pass\n",
+    "\n",
+    "# -----------------\n",
+    "# Misc declarations\n",
+    "# -----------------\n",
+    "# Pandas declarations\n",
+    "\n",
+    "# Hide Chained Assignment (SettingWithCopy warning)\n",
+    "pd.options.mode.chained_assignment = None  # default='warn'"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Dataframe global variables\n",
+    "globAccountsDF = \"accounts_db.csv\"\n",
+    "globJobsDF = \"jobs_db.csv\"\n",
+    "globJobCatDF = \"job_categories.csv\"\n",
+    "globDocumentationDF = \"job_documents.csv\"\n",
+    "globInvitationDF = \"job_invitation.csv\"\n",
+    "glob_all_dataframes = [globAccountsDF, globJobsDF, globJobCatDF, globDocumentationDF, globInvitationDF]\n",
+    "glob_all_df_names = [\"accounts_db.csv\", \"jobs_db.csv\", \"job_categories.csv\", \"job_documents.csv\", \"job_invitation.csv\"]\n",
+    "\n",
+    "local_files = os.listdir(os.getcwd())\n",
+    "\n",
+    "# Global variables\n",
+    "#globUID = 'tetest0001s'\n",
+    "globUID = ''\n",
+    "globRecommendedCategories = []"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# TO CLEAR ALL CSV FILES; \n",
+    "#DROP_DATABASE(glob_all_df_names)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# UI\n",
+    "#### Boundary class\n",
+    "For initialising and running the program"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "class UI:\n",
+    "#Checks whether the data is in the current working directory; if not, it builds new database files to work with.\n",
+    "    def initialise():\n",
+    "        global globAccountsDF\n",
+    "        global globJobsDF\n",
+    "        global globJobCatDF\n",
+    "        global globDocumentationDF\n",
+    "        global globInvitationDF\n",
+    "        global glob_all_dataframes\n",
+    "        global glob_all_df_names\n",
+    "        global globUID\n",
+    "\n",
+    "        local_files = os.listdir(os.getcwd())\n",
+    "\n",
+    "        # Checks whether database is present in CWD; if not, generate a new database\n",
+    "        for dbase in glob_all_dataframes:\n",
+    "            if dbase in os.listdir(os.getcwd()):\n",
+    "                print(dbase, \"detected.\")\n",
+    "                dbase = pd.read_csv(dbase)\n",
+    "            else:\n",
+    "                print(dbase, \"not detected.\")   \n",
+    "\n",
+    "        # Handling missing databases\n",
+    "        local_files = os.listdir(os.getcwd())\n",
+    "        # If the accounts database is not present\n",
+    "        if \"accounts_db.csv\" not in local_files:\n",
+    "            demo_seeker = {'firstName':'Ted',\n",
+    "                           'lastName':'Testable',\n",
+    "                           'password':'testerted',\n",
+    "                           'is_seeker':True,\n",
+    "                           'UID':['tetest0001s'],\n",
+    "                           'email':'tester@jobapps.org',\n",
+    "                           'skills':\"['Systems Testing', 'Network Security', 'Data Science', 'Python']\"}\n",
+    "            demo_recruiter = {'firstName':'Rick',\n",
+    "                              'lastName':'Recruitable',\n",
+    "                              'password':'recruiterrick',\n",
+    "                              'is_seeker':False,\n",
+    "                              'UID':['rirecr0001r'],\n",
+    "                              'email':'recruiter@jobapps.org',\n",
+    "                              'skills':\"['Recruiting', 'People Management']\"}\n",
+    "            demo_admin = {'firstName':'Adam',\n",
+    "                              'lastName':'Administrator',\n",
+    "                              'password':'adminadam',\n",
+    "                              'is_seeker':False,\n",
+    "                              'UID':['adadmi0001a'],\n",
+    "                              'email':'admin@jobapps.org',\n",
+    "                              'skills':\"['Database Management', 'System Controller Development']\"}\n",
+    "            globAccountsDF = pd.concat([pd.DataFrame(demo_seeker), pd.DataFrame(demo_recruiter), pd.DataFrame(demo_admin)])\n",
+    "            globAccountsDF = globAccountsDF[['UID', 'firstName', 'lastName', 'email', 'password', 'is_seeker', 'skills']]\n",
+    "            globAccountsDF.to_csv(\"accounts_db.csv\", index=False)\n",
+    "            print(\"\\nAccounts database generated.\")\n",
+    "\n",
+    "        # If the job listing database is missing\n",
+    "        if \"jobs_db.csv\" not in local_files:\n",
+    "            demo_job = {'jobName':'Python Developer',\n",
+    "                        'jobCreatorUID':'rirecr0001r',\n",
+    "                        'jobType':'IT/Technology',\n",
+    "                        'jobSalary':'65000',\n",
+    "                        'jobUID':['IT000001'],\n",
+    "                        'jobAdvertised':True,\n",
+    "                        'jobKeyword':\"['Python','Developer','Melbourne','Full-Time', 'ClosedDemo']\",\n",
+    "                        'jobSkillset':\"['Python', 'Full-Stack', 'Team Experience']\",\n",
+    "                        'applicants':\"['tetest0001s', 'value0001s', 'tetest0002s']\"}\n",
+    "            globJobsDF = pd.DataFrame(demo_job)\n",
+    "            globJobsDF = globJobsDF[['jobName','jobCreatorUID','jobType','jobSalary','jobUID','jobAdvertised','jobKeyword','jobSkillset','applicants']]\n",
+    "            globJobsDF.to_csv(\"jobs_db.csv\", index=False)\n",
+    "            print(\"\\nJobs database generated.\")\n",
+    "\n",
+    "        # If the job categories database is missing\n",
+    "        if \"job_categories.csv\" not in local_files:\n",
+    "            demo_job_cats = {'jobCategories':['IT/Technology', 'Finance/Banking', 'Hospitality', 'Construction',\n",
+    "                                              'Healthcare', 'Education', 'Agriculture', 'Other Service Industry',\n",
+    "                                              'Communications / PR', 'Accounting', 'Legal Profession',\n",
+    "                                              'Other Professional Services']}\n",
+    "            globJobCatDF = pd.Series(demo_job_cats)\n",
+    "            globJobCatDF.to_csv(\"job_categories.csv\", index=False)\n",
+    "            print(\"\\nJob Categories database generated.\")\n",
+    "\n",
+    "        # If the Job Documentation Dataframe is missing\n",
+    "        if \"job_documents.csv\" not in local_files:\n",
+    "            demo_documentation = {'jobID':['IT000001'],\n",
+    "                                 'seekerID':'tetest0001s',\n",
+    "                                 'documentsUploaded':\"['Ted_resume.docx', 'Ted_CoverLetter.docx']\"}\n",
+    "            globDocumentationDF = pd.DataFrame(demo_documentation, index=[0])\n",
+    "            globDocumentationDF = globDocumentationDF[['jobID', 'seekerID', 'documentsUploaded']]\n",
+    "            globDocumentationDF.to_csv(\"job_documents.csv\", index=False)\n",
+    "            print(\"\\nJob Documentation database generated.\")\n",
+    "\n",
+    "        # If the job invitation dataframe is missing\n",
+    "        if \"job_invitation.csv\" not in local_files:\n",
+    "            demo_invitation = {'recruiterUID':'rirecr0001r',\n",
+    "                              'seekerUID':'tetest0001s',\n",
+    "                               'jobUID':['IT000001'],\n",
+    "                              'location':'123 Main Street, Melbourne VIC 3000',\n",
+    "                              'time':'12:65pm, 31/02/2019',\n",
+    "                              'accepted':True}\n",
+    "            globInvitationDF = pd.DataFrame(demo_invitation, index=[0])\n",
+    "            globInvitationDF = globInvitationDF[['recruiterUID', 'seekerUID','jobUID', 'location', 'time', 'accepted']]\n",
+    "            globInvitationDF.to_csv(\"job_invitation.csv\", index=False)\n",
+    "            print(\"\\nJob Invitation database generated.\")\n",
+    "\n",
+    "        # Global variables\n",
+    "        globUID = ''\n",
+    "        globRecommendedCategories = []\n",
+    "\n",
+    "        # Setting database links\n",
+    "        globAccountsDF = pd.read_csv(\"accounts_db.csv\")\n",
+    "        globJobsDF = pd.read_csv(\"jobs_db.csv\")\n",
+    "        globJobCatDF = pd.read_csv(\"job_categories.csv\", squeeze=True)\n",
+    "        globDocumentationDF = pd.read_csv(\"job_documents.csv\")\n",
+    "        globInvitationDF = pd.read_csv(\"job_invitation.csv\")\n",
+    "    \n",
+    "    # Initialises the data, and then begins running the OJSS platform via Menu.splash_menu()\n",
+    "    def start_ojss():\n",
+    "        UI.initialise()\n",
+    "        Menu.splash_menu()\n",
+    "    \n",
+    "    # Calls Menu.splash_menu\n",
+    "    def run():\n",
+    "        Menu.splash_menu()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# System Controller\n",
+    "#### Controller Class"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Defining SystemController class\n",
+    "class SystemController:\n",
+    "    # Logs users into the system\n",
+    "    def login(attempts = 0):\n",
+    "        global globUID\n",
+    "        if attempts > 3:\n",
+    "            print(\"\\nYou've attempted to login unsuccessfully too many times, please create a new account.\")\n",
+    "            return Account().create_account()\n",
+    "        else:\n",
+    "            login_email = input(\"Please provide your email address, or type EXIT (in all caps) to exit the program.\")\n",
+    "            # If email is detected\n",
+    "            if len(globAccountsDF[(globAccountsDF.email == login_email)]) != 0:\n",
+    "                pword = input(\"Please enter your password.\")\n",
+    "                if pword == \"\".join(globAccountsDF.password[globAccountsDF.email == login_email].tolist()):\n",
+    "                    globUID = \"\".join(globAccountsDF.UID[(globAccountsDF.email == login_email)].tolist())\n",
+    "                    print(\"\\nSuccessfully logged in!\")\n",
+    "                    attempts = 0\n",
+    "                    return Menu.main_menu()\n",
+    "                else:\n",
+    "                    print(\"\\nPassword incorrect, attempting to login again.\")\n",
+    "                    return SystemController.login(attempts+1)\n",
+    "            # Exit statement\n",
+    "            elif login_email == \"EXIT\":\n",
+    "                raise SystemExit\n",
+    "            # Handle missing/incorrect email. Offer retry (limited attempts) or generate account.\n",
+    "            else:\n",
+    "                print(\"\\nEmail not detected. Enter 1 to retry, or anything else to create an account.\")\n",
+    "                state = input()\n",
+    "                if state == \"1\":\n",
+    "                    SystemController.login(attempts+1)\n",
+    "                else:\n",
+    "                    Account().gen_account()\n",
+    "    \n",
+    "    # Logs users out.\n",
+    "    def logout():\n",
+    "        global globUID\n",
+    "        globUID = ''\n",
+    "        print(\"\\nLogged out. Please login to continue.\")\n",
+    "        return Menu.splash_menu()   \n",
+    "    \n",
+    "    # Matches job seekers to jobs, based on their skills.\n",
+    "    def matching_scores():\n",
+    "        if globUID == '':\n",
+    "            return SystemController.login()\n",
+    "        userUID = globUID\n",
+    "        # If the requester is a job seeker\n",
+    "        match_term_count = 0\n",
+    "        score = 0\n",
+    "        if userUID[-1] == 's':\n",
+    "            # If no jobs are available to apply for\n",
+    "            state = True\n",
+    "            if len(globJobsDF[globJobsDF.jobAdvertised == True]) == 0:\n",
+    "                print(\"\\nWARNING:\\nNo jobs are currently available to apply for, so we've returned you to the main menu. Please try later!\\n\")\n",
+    "                state = False\n",
+    "            if state is False:\n",
+    "                return Menu.main_menu()\n",
+    "            \n",
+    "            # Display the list of available industries / job types. Ensures the industry selection is correct.\n",
+    "            print(globJobsDF.jobType.unique().tolist())\n",
+    "            industry = input(\"Please enter the industry that you're interesting in having us match you with.\")\n",
+    "            if industry not in globJobsDF.jobType.unique().tolist():\n",
+    "                return SystemController.matching_scores()\n",
+    "            else:\n",
+    "                pass\n",
+    "            \n",
+    "            # Display their skills and keywords chosen at account creation\n",
+    "            try:\n",
+    "                skills = ast.literal_eval(globAccountsDF.skills[globAccountsDF.UID == globUID][0])\n",
+    "            except (KeyError, ValueError):\n",
+    "                skills = ast.literal_eval(globAccountsDF.skills[globAccountsDF.UID == globUID].tolist()[0])\n",
+    "                        \n",
+    "            # Build the best possible score, based on the values provide by the user.\n",
+    "            iterscore = ['No Match', 0]\n",
+    "            # Build a new dataframe with only the jobs that can be applied for in the dataframe, where the user has not already applied for that job.\n",
+    "            relevant_jobs = globJobsDF[(globJobsDF.jobAdvertised == True)\n",
+    "                                       & (globJobsDF.jobType == industry)\n",
+    "                                       & (globJobsDF.applicants.str.contains(userUID)==False)].reset_index(drop=True)\n",
+    "            if len(relevant_jobs) == 0:\n",
+    "                print(\"Your best-match job cannot be identified, and it appears you've applied for all available jobs.\")\n",
+    "                return Menu.main_menu()\n",
+    "            # Iterate through the new dataframe\n",
+    "            for job in range(0,len(relevant_jobs)):\n",
+    "                count = 0\n",
+    "                jobskills_ = relevant_jobs.jobSkillset[relevant_jobs.index == job][0]\n",
+    "                for term in skills:\n",
+    "                    if term in jobskills_:\n",
+    "                        count += 1\n",
+    "                score = count / len(jobskills_)\n",
+    "                if score > iterscore[1]:\n",
+    "                    iterscore[1] = score\n",
+    "                    iterscore[0] = relevant_jobs.jobUID[relevant_jobs.index == job][0]\n",
+    "                else:\n",
+    "                    pass\n",
+    "            if iterscore[1] > 0:\n",
+    "                print(\"\\nYour optimal job can be found by applying for job UID\", iterscore[0])\n",
+    "                display(globJobsDF[[i for i in globJobsDF.columns.tolist() if i != \"applicants\"]][globJobsDF.jobUID == iterscore[0]])\n",
+    "                return JobSeeker.job_apply()\n",
+    "            else:\n",
+    "                print(\"\\nSorry, we couldn't identify a job to recommend based on the details you provided. Please try again some other time!\")\n",
+    "                return Menu.main_menu()\n",
+    "        \n",
+    "        # If the requester cannot be identified\n",
+    "        else:\n",
+    "            print(\"\\nThere's an issue with your account - please login again after we've logged you out.\")\n",
+    "            SystemController.logout()\n",
+    "    \n",
+    "    # Pointer to Account().update_skills\n",
+    "    def update_skills():\n",
+    "        return Account().update_skills()\n",
+    "    \n",
+    "    def create_job():\n",
+    "        return Job().create_job()\n",
+    "    \n",
+    "    def gen_account():\n",
+    "        return Account.gen_account()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# System Administrator Controller\n",
+    "#### Controller Class"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "class SystemAdministratorController:\n",
+    "    def update_categories():\n",
+    "        if globUID[-1] == 'a': # Check that the logged-in user is an administrator\n",
+    "            global globJobCatDF\n",
+    "            global globRecommendedCategories\n",
+    "            if len(globRecommendedCategories) > 0:\n",
+    "                print(\"\\nThe following job categories have been requested by job recruiters.\")\n",
+    "                print(globRecommendedCategories)\n",
+    "            values = input(\"Input the new job categories, indicating the start and finish of each category with a comma\").split(\",\")\n",
+    "            cats = [i.strip() for i in globJobCatDF.name[2:-2].replace(\"'\", \"\").split(\",\")]\n",
+    "            update = [i.strip() for i in values] + cats\n",
+    "            values = pd.Series({\"Job Categories\":set(update)})\n",
+    "            globJobCatDF = values\n",
+    "            globJobCatDF.to_csv(\"job_categories.csv\", index=False)\n",
+    "            globJobCatDF = pd.read_csv(\"job_categories.csv\", squeeze=True)\n",
+    "            globRecommendedCategories = []\n",
+    "            return \"Job categories successfully updated, and category request store has been wiped.\"\n",
+    "        else:\n",
+    "            print(\"\\nYou don't have permission to do that. Please logout, and log back in with an admin account.\")\n",
+    "            return SystemController.logout()\n",
+    "        "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Account\n",
+    "#### Entity Class"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "class Account:\n",
+    "    def __init__(self):\n",
+    "        self.data = []\n",
+    "        \n",
+    "    def gen_account(self):\n",
+    "        global globAccountsDF\n",
+    "        self.first = input(\"What is your first name? \")\n",
+    "        self.last = input(\"What is your surname? \")\n",
+    "        self.email =  input(\"What is your email address?\")\n",
+    "        if len(globAccountsDF[(globAccountsDF.email == self.email)]) != 0:\n",
+    "            print(\"\\n\\nWARNING: An account with the email is recorded in the system - please login, or contact us on [GENERIC_EMAIL] if you\"+\n",
+    "                  \" have forgotten your password.\")\n",
+    "            return Menu.splash_menu()\n",
+    "        else:\n",
+    "            pass\n",
+    "        check_state = False\n",
+    "        while check_state == False:\n",
+    "            self.password = input(\"Please type your password: \")\n",
+    "            self.pass_check = input(\"Please type your password again to confirm: \")\n",
+    "            if self.password == self.pass_check:\n",
+    "                check_state = True\n",
+    "            else:\n",
+    "                print(\"\\nPasswords did not match; please try again.\")\n",
+    "\n",
+    "        # Set seeker status\n",
+    "        self.is_seeker = Account.seeker()        \n",
+    "        \n",
+    "        # Generate unique ID\n",
+    "        self.id_string = self.first.lower()[0:2] + self.last.lower()[0:4]\n",
+    "        if len(self.id_string) < 6:\n",
+    "            self.id_string += (6-len(self.id_string))*'x'\n",
+    "        # Counts the occurence count of the user ID, add one, and use this for numbering.\n",
+    "        self.id_string += (str(len(globAccountsDF[globAccountsDF.UID.str.contains(self.id_string)])+1).zfill(4))\n",
+    "\n",
+    "        # 's'/'r' seeker/recruiter substring\n",
+    "        if self.is_seeker:\n",
+    "            self.id_string += ('s')\n",
+    "        else:\n",
+    "            self.id_string += ('r')\n",
+    "        \n",
+    "        # Filling in skills\n",
+    "        self.new_skills = input(\"Please enter any skills you wish to add to your account, separating each with a comma.\").split(',')\n",
+    "        \n",
+    "        print(\"\\nAll details are approved for submission.\")\n",
+    "        \n",
+    "        self.details = {'firstName':self.first,\n",
+    "                        'lastName':self.last,\n",
+    "                        'password':self.password,\n",
+    "                        'is_seeker':self.is_seeker,\n",
+    "                        'UID':self.id_string,\n",
+    "                        'email':self.email,\n",
+    "                        'skills':str(self.new_skills)}\n",
+    "\n",
+    "        globAccountsDF.loc[len(globAccountsDF)] = self.details\n",
+    "        globAccountsDF.to_csv(\"accounts_db.csv\", index=False)\n",
+    "        print(\"\\nNew account created!\")\n",
+    "        return Menu.splash_menu()\n",
+    "    \n",
+    "    # Check seeker status\n",
+    "    def seeker():\n",
+    "        is_seeker = input(\"Are you a jobseeker? If so, please type True. If not, please type False. \")\n",
+    "        if is_seeker.lower() == 'true':\n",
+    "            is_seeker = True\n",
+    "        elif is_seeker.lower() == 'false':\n",
+    "            is_seeker = False\n",
+    "        else: # Recursive request if not True/False\n",
+    "            print(\"\\nNot a recognised input; please try again.\")\n",
+    "            is_seeker = Account.seeker()\n",
+    "        return is_seeker\n",
+    "    \n",
+    "    def update_account(self, uid = globUID):\n",
+    "        global globAccountsDF\n",
+    "        state = False\n",
+    "        while state == False:\n",
+    "            state = input(\"What would you like to update? \\n1. Email address\\n2. Password\\n3. Skills\\n4. Exit\\nEnter the relevant number.\")\n",
+    "            if state == \"4\":\n",
+    "                state = True\n",
+    "            else:\n",
+    "                if state == \"1\":\n",
+    "                    self.newemail = input(\"Pleases enter your new email.\")\n",
+    "                    self.emailcheck = input(\"Please re-enter your new email.\")\n",
+    "                    if self.newemail == self.emailcheck:\n",
+    "                        globAccountsDF['email'][globAccountsDF.UID == uid] = self.newemail\n",
+    "                        globAccountsDF.to_csv(\"accounts_db.csv\", index=False)\n",
+    "                        return \"Email updated.\"\n",
+    "                    else:\n",
+    "                        print(\"\\nEmails entered did not match, please try again.\")\n",
+    "                        return Account().update_account()\n",
+    "                elif state == \"2\":\n",
+    "                    return \"Function not yet available.\"\n",
+    "                elif state == \"3\":\n",
+    "                    return Account().update_skills()\n",
+    "        \n",
+    "    # Prompt users to provide their skill sets.\n",
+    "    def update_skills(self):\n",
+    "        global globAccountsDF\n",
+    "        userUID = globUID\n",
+    "        # Pull existing skillset if it is not empty, otherwise use an empty list\n",
+    "        if not globAccountsDF.skills[globAccountsDF.UID == globUID].tolist() == ['[]']:\n",
+    "            try:\n",
+    "                self.current_skills = ast.literal_eval(globAccountsDF.skills[globAccountsDF.UID == userUID][0])\n",
+    "                #print(\"Option 1\")\n",
+    "            except KeyError:\n",
+    "                self.current_skills = ast.literal_eval(str(globAccountsDF.skills[globAccountsDF.UID == userUID].tolist())[2:-2])\n",
+    "                #print(\"Option 2\")\n",
+    "            print(\"Your existing skills are listed as;\", self.current_skills)\n",
+    "        else:\n",
+    "            self.current_skills = []\n",
+    "        state = 'hgfghfj'\n",
+    "        while state.lower() not in ['true', 'false']:\n",
+    "            state = input(\"Do you wish to add to your current skills, or replace them entirely? Please enter either TRUE (to append) or FALSE (to rewrite).\")\n",
+    "        # Receive new skills from user, append to list and then turn list to string.\n",
+    "        provision = input(\"Please provide your skills, separating each skillset by a comma.\").split(',')\n",
+    "        self.new_skills = [i.strip() for i in list(provision)]\n",
+    "        # Write to dataframe, and save CSV\n",
+    "        if state.lower() == \"false\":\n",
+    "            globAccountsDF['skills'][globAccountsDF.UID == globUID] = str(list(self.new_skills))\n",
+    "        else:\n",
+    "            globAccountsDF['skills'][globAccountsDF.UID == globUID] = str(list(set(self.current_skills + self.new_skills)))\n",
+    "        print(\"Updated values\")\n",
+    "        globAccountsDF.to_csv(\"accounts_db.csv\", index=False)\n",
+    "        print(\"Skills updated.\")\n",
+    "        return Menu.main_menu()    "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Job\n",
+    "#### Entity Class"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "class Job:\n",
+    "    def __init__(self):\n",
+    "        self.data = []\n",
+    "        \n",
+    "    # Generate a new job. 'job' argument exists for handling incorrect inputs.\n",
+    "    def create_job(self, job=\"\"):\n",
+    "        global globJobsDF\n",
+    "        if job == \"\":\n",
+    "            self.job_name = input(\"Please provide name of job.\")\n",
+    "        else:\n",
+    "            self.job_name = job\n",
+    "        \n",
+    "        # Return all available job categories\n",
+    "        job_cats = ast.literal_eval(globJobCatDF.name)\n",
+    "        print(job_cats)\n",
+    "        self.job_type = input(\"Please enter the relevant category from the list above, or type EXIT to leave.\")\n",
+    "        if self.job_type in job_cats:\n",
+    "            pass\n",
+    "        elif self.job_type.lower() == \"exit\":\n",
+    "            return Menu.main_menu()\n",
+    "        else:\n",
+    "            print(\"\\nInput not recognised, please try again.\")\n",
+    "            return Job().create_job(job=self.job_name)\n",
+    "        \n",
+    "        # Input details, store in dict, then append to end of jobs dataframe\n",
+    "        print(\"\\nEntering EXIT in any of the following states will return you to the menu once all inputs are taken.\")\n",
+    "        self.job_salary = 'a'\n",
+    "        while not self.job_salary.replace(',', '').isnumeric():\n",
+    "            self.job_salary = input(\"Please provide the salary of the job (in whole dollars per annum).\")\n",
+    "        self.job_keyword = input(\"Please provide job keywords, separating each keyword by a comma.\").split(',')\n",
+    "        self.job_skillsets = input(\"Please provide job skillsets, separating each skillset by a comma.\").split(',')\n",
+    "        self.job_id = self.job_type[:2] + str(len(globJobsDF[globJobsDF.jobUID.str.contains(self.job_type[:2])])+1).zfill(6)\n",
+    "        \n",
+    "        # Check for exit requests.\n",
+    "        for i in [self.job_salary, self.job_keyword, self.job_skillsets]:\n",
+    "            if type(i) == str:\n",
+    "                if i.lower() == 'exit':\n",
+    "                    return Menu.main_menu()\n",
+    "        \n",
+    "        self.details = {'jobName':self.job_name,\n",
+    "                        'jobCreatorUID':globUID,\n",
+    "                        'jobType':self.job_type,\n",
+    "                        'jobSalary':self.job_salary,\n",
+    "                        'jobUID':self.job_id,\n",
+    "                        'jobAdvertised':False,\n",
+    "                        'jobKeyword':str(self.job_keyword),\n",
+    "                        'jobSkillset':str(self.job_skillsets),\n",
+    "                        'applicants':'[]'}\n",
+    "        \n",
+    "        # Save to the CSV database\n",
+    "        globJobsDF.loc[len(globJobsDF)] = self.details\n",
+    "        globJobsDF.to_csv(\"accounts_db.csv\", index=False)\n",
+    "        print(\"New job created successfully - don't forget to advertise this job.\")\n",
+    "        return Menu.main_menu()\n",
+    "    "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Job Recruiter\n",
+    "#### Controller Class"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "class JobRecruiter:\n",
+    "    # Display all jobs created by the logged-in recruiter\n",
+    "    def get_jobs():\n",
+    "        display(globJobsDF[globJobsDF.jobCreatorUID == globUID])\n",
+    "        return Menu.main_menu()\n",
+    "    \n",
+    "    # Return the applicant UIDs for applicants to a given (requested) job UID.\n",
+    "    def check_applicants():\n",
+    "        jobUID = input(\"Please enter the job UID for the job you wish to see applicants for, or enter MENU to return to the menu.\")\n",
+    "        if jobUID.lower() == \"menu\":\n",
+    "            return Menu.main_menu()\n",
+    "        if jobUID not in globJobsDF.jobUID.unique().tolist():\n",
+    "            return JobRecruiter.get_jobs()\n",
+    "        if len(globJobsDF.applicants[globJobsDF.jobUID == jobUID]) <= 2: #Indicates no job seekers\n",
+    "            print(\"\\nNo applicants detected, please try with another job from the list below.\")\n",
+    "            return JobRecruiter.get_jobs()\n",
+    "        else:\n",
+    "            applicants = [i.strip() for i in globJobsDF[\"applicants\"][(globJobsDF.jobCreatorUID == globUID) & (globJobsDF.jobUID == jobUID)][0].replace(\"[\", \"\").replace(\"]\", \"\").replace(\"'\", \"\").split(\",\")]\n",
+    "    \n",
+    "    # Check the status of issued job interview invitations\n",
+    "    def check_invitations():\n",
+    "        display(globInvitationDF[globInvitationDF.recruiterUID == globUID])\n",
+    "        state = input(\"Enter TRUE if you wish to send invitations, otherwise enter anything else to return to the menu.\")\n",
+    "        if state.lower() == 'true':\n",
+    "            return Invitations.issue_invitation()\n",
+    "        else:\n",
+    "            return Menu.main_menu()\n",
+    "            \n",
+    "    # Publish a job so it is available for job seekers to see\n",
+    "    def publish_job():\n",
+    "        print(JobRecruiter.get_jobs())\n",
+    "        jobUID = input(\"Please enter the job UID for the job you wish to remove, or enter MENU to return to the menu.\")\n",
+    "        if jobUID.lower() == \"menu\":\n",
+    "            return Menu.main_menu()\n",
+    "        if jobUID not in globJobsDF.jobUID.unique().tolist():\n",
+    "            return JobRecruiter.get_jobs()\n",
+    "        else:\n",
+    "            globJobsDF.jobAdvertised[globJobsDF.jobUID == jobUID] = True\n",
+    "            globJobsDF.to_csv(\"jobs_db.csv\", index=False)\n",
+    "            return \"Job successfully advertised.\"\n",
+    "        \n",
+    "    # Request a new job category is added to the list of available options.\n",
+    "    def request_category():\n",
+    "        global globRecommendedCategories\n",
+    "        categories = input(\"Please enter your requested job categories, separating each with a comma.\").split(\",\")\n",
+    "        globRecommendedCategories += categories\n",
+    "        return \"Categories request has been sent!\"\n",
+    "        \n",
+    "    # \"Remove\" a job by setting its advertise status to False, i.e. it will no longer show in job searches.\n",
+    "    def remove_job():\n",
+    "        jobUID = input(\"Please enter the job UID for the job you wish to remove, or enter MENU to return to the menu.\")\n",
+    "        if jobUID.lower() == \"menu\":\n",
+    "            return Menu.main_menu()\n",
+    "        if jobUID not in globJobsDF.jobUID.unique().tolist():\n",
+    "            return JobRecruiter.get_jobs()\n",
+    "        else:\n",
+    "            globJobsDF.jobAdvertised[globJobsDF.jobUID == jobUID] = False\n",
+    "            globJobsDF.to_csv(\"jobs_db.csv\", index=False)\n",
+    "            return \"Job successfully delisted.\""
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Job Seeker\n",
+    "#### Controller Class"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "class JobSeeker:\n",
+    "    # Allow jobseekers to search for a job based on their skills.\n",
+    "    def job_search():\n",
+    "        userUID = globUID\n",
+    "        print(ast.literal_eval(globJobCatDF.name))\n",
+    "        jobtype = input(\"Provide the job type you would like to search for, from the list above.\")\n",
+    "        \n",
+    "        # If no jobs exist for that category;\n",
+    "        curr_jobs = globJobsDF.jobType.unique().tolist()\n",
+    "        if jobtype not in curr_jobs:\n",
+    "            print(\"\\nSorry, we don't have any jobs for that job category.\")\n",
+    "            print(\"\\nWe currently have jobs available in the following sectors;\")\n",
+    "            print(curr_jobs)\n",
+    "            return JobSeeker.job_search()\n",
+    "        \n",
+    "        userskills = ast.literal_eval(globAccountsDF.skills[globAccountsDF.UID==globUID].tolist()[0])\n",
+    "        if type(userskills[0]) == list:\n",
+    "            userskills = flatten(userskills)\n",
+    "        print(userskills)\n",
+    "        \n",
+    "        jobskills = '2189gdnsgi1099' # Nonsense string\n",
+    "        while jobskills not in userskills:\n",
+    "            jobskills = input(\"Provide which primary skill you would like to search with, from your skillset listed above. Note that only one skill can be selected. To leave, please enter EXIT.\").split(\",\")[0]\n",
+    "            if jobskills.lower() == 'exit':\n",
+    "                return Menu.main_menu()\n",
+    "        # Pull available jobs. Second catch for whether jobs are available.\n",
+    "        jobs_avail = globJobsDF[[i for i in globJobsDF if i != 'applicants']][(globJobsDF.jobType == jobtype) & (globJobsDF.jobSkillset.str.contains(jobskills)) & (globJobsDF.applicants.str.contains(userUID)==False)]\n",
+    "        if len(jobs_avail) == 0:\n",
+    "            print(\"\\nNo jobs available, based on your search terms. Returning you to the menu now.\")\n",
+    "            return Menu.main_menu()\n",
+    "        else:\n",
+    "            display(jobs_avail)\n",
+    "            state = '2189gdnsgi1099' # Nonsense string\n",
+    "            while state.lower() not in [\"apply\", \"exit\"]:\n",
+    "                state = input(\"To apply for any of these jobs, please enter APPLY, or enter EXIT to return to the menu.\")\n",
+    "                if state.lower() == \"exit\":\n",
+    "                    return Menu.main_menu()\n",
+    "                elif state.lower() == \"apply\":\n",
+    "                    JobSeeker.job_apply()\n",
+    "                    \n",
+    "    def industry_search():\n",
+    "        userUID = globUID\n",
+    "        print(ast.literal_eval(globJobCatDF.name))\n",
+    "        jobtype = input(\"Provide the job type you would like to search for, from the list above.\")\n",
+    "        \n",
+    "        # If no jobs exist for that category;\n",
+    "        curr_jobs = globJobsDF.jobType.unique().tolist()\n",
+    "        if jobtype not in curr_jobs:\n",
+    "            print(\"\\nSorry, we don't have any jobs for that job category.\")\n",
+    "            print(\"\\nWe currently have jobs available in the following sectors;\")\n",
+    "            print(curr_jobs)\n",
+    "            return JobSeeker.industry_search()\n",
+    "        \n",
+    "        # Pull available jobs. Second catch for whether jobs are available.\n",
+    "        jobs_avail = globJobsDF[[i for i in globJobsDF if i != 'applicants']][(globJobsDF.jobType == jobtype) & (globJobsDF.applicants.str.contains(userUID)==False) & (globJobsDF.jobAdvertised == True)]\n",
+    "        if len(jobs_avail) == 0:\n",
+    "            print(\"\\nYou've applied for all available jobs in the industry. Returning you to the menu now.\")\n",
+    "            return Menu.main_menu()\n",
+    "        \n",
+    "        # Ask whether the searcher wants to apply to any of the jobs.\n",
+    "        state = '2189gdnsgi1099'\n",
+    "        while state.lower() not in ['true', 'false']:\n",
+    "            state = input(\"Please enter TRUE to apply for one of these jobs, otherwise enter EXIT to return to the menu.\")\n",
+    "        if state.lower() == 'true':\n",
+    "            return JobSeeker.job_apply()\n",
+    "        else:\n",
+    "            return Menu.main_menu()\n",
+    "    \n",
+    "    # Apply for jobs. Requires job seeker knows the job UID.\n",
+    "    def job_apply():\n",
+    "        global globJobsDF\n",
+    "        jobapply = input(\"Please provide the job UID that you wish to apply for.\")\n",
+    "        if jobapply not in globJobsDF.jobUID.unique().tolist():\n",
+    "            state = (\"Job ID not detected. Enter RETRY to attempt again, SEARCH to search for jobs, or EXIT to return to the menu.\")\n",
+    "            if state.lower() == \"retry\":\n",
+    "                JobSeeker.job_apply()\n",
+    "            elif state.lower() == \"search\":\n",
+    "                JobSeeker.job_search()\n",
+    "            else:\n",
+    "                Menu.main_menu()\n",
+    "        else:\n",
+    "            target_applicants = ast.literal_eval(globJobsDF.applicants[globJobsDF.jobUID == jobapply][0])\n",
+    "            if globUID in target_applicants:\n",
+    "                print(\"You've already applied for that job, please try again.\")\n",
+    "                return Menu.main_menu()\n",
+    "            else:\n",
+    "                globJobsDF.applicants[globJobsDF.jobUID == jobapply] = str(target_applicants + [globUID])\n",
+    "                globJobsDF.to_csv(\"jobs_db.csv\", index=False)\n",
+    "                print(\"You've successfully applied to your selected job.\")\n",
+    "        return Menu.main_menu()\n",
+    "    \n",
+    "    # Check jobs that the seeker has applied for\n",
+    "    def job_check():\n",
+    "        applied_jobs = globJobsDF[[i for i in globJobsDF.columns.tolist() if i != 'applicants']][globJobsDF.applicants.str.contains(globUID)]\n",
+    "        if len(applied_jobs) > 0:\n",
+    "            display(globJobsDF[[i for i in globJobsDF.columns.tolist() if i != 'applicants']][globJobsDF.applicants.str.contains(globUID)])\n",
+    "        else:\n",
+    "            print(\"\\nYou haven't applied for any jobs!\")\n",
+    "        return Menu.main_menu()\n",
+    "    \n",
+    "    # Check for any interview requests that have been sent\n",
+    "    def invitation_check():\n",
+    "        invites = globInvitationDF[(globInvitationDF.seekerUID == globUID) & (globInvitationDF.accepted == False)]\n",
+    "        accepted = globInvitationDF[(globInvitationDF.seekerUID == globUID) & (globInvitationDF.accepted == True)]\n",
+    "        if len(invites) > 0:\n",
+    "            print(\"\\n/nHere are the interview invitations requests waiting for your approval.\")\n",
+    "            display(invites)\n",
+    "            if input(\"Please enter YES if you wish to accept/reject any of these invitations.\").lower() == 'yes':\n",
+    "                return Invitations.accept_invitation()\n",
+    "            else:\n",
+    "                return globInvitationDF[globInvitationDF.seekerUID == globUID]\n",
+    "        else:\n",
+    "            if len(accepted) > 0:\n",
+    "                print(\"\\nHere are the interview invitations which you have accepted.\")\n",
+    "                display(accepted)\n",
+    "                return \"You've accepted all interview invitations sent to you.\"\n",
+    "            else:\n",
+    "                return \"No interview invitations are recorded for your account.\""
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "#globUID = 'tetest0001s'\n",
+    "#JobSeeker.job_search()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Documentation\n",
+    "#### Entity Class"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "class Documentation:\n",
+    "    def __init__(self):\n",
+    "        self.documents = {}\n",
+    "        \n",
+    "    def get_doc(self, job_id, seeker_id):\n",
+    "        self.doc_name = input(\"Please insert all file names including extenstions, seperated by a comma.\").split(',')\n",
+    "        self.doc_name = [i.strip() for i in self.doc_name]\n",
+    "        details = {'jobID': job_id,\n",
+    "                  'seekerID': seeker_id,\n",
+    "                  'documentsUploaded': str(self.doc_name)}\n",
+    "        globDocumentationDF.loc[len(df)] = details\n",
+    "        globDocumentationDF.to_csv(\"accounts_db.csv\", index=False)\n",
+    "        return \"Documents uploaded\""
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Menus\n",
+    "#### Boundary Class"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "class Menu:\n",
+    "    # Catchall menu; uses UID identifying character to determine which menu to show.\n",
+    "    def main_menu():\n",
+    "        global globUID\n",
+    "        UID = globUID\n",
+    "        if UID[-1] == 's':\n",
+    "            Menu.seeker_menu()\n",
+    "        elif UID[-1] == 'r':\n",
+    "            Menu.recruiter_menu()\n",
+    "        elif UID[-1] == 'a':\n",
+    "            Menu.admin_menu()\n",
+    "        else:\n",
+    "            print(\"\\nUID not recognised.\")\n",
+    "            globUID = ''\n",
+    "            Menu.splash_menu()\n",
+    "    \n",
+    "    # Only accessible by job seekers.\n",
+    "    def seeker_menu():\n",
+    "        print(\"\\nAvailable Options:\\n\"+\n",
+    "              \"1. Update Skills\\n\"+\n",
+    "              \"2. Search for Jobs\\n\"+\n",
+    "              \"3. See Current Interview Invitations\\n\"+\n",
+    "              \"4. See Current Job Applications\\n\"+\n",
+    "              \"5. Run a generalised job search\\n\"+\n",
+    "              \"6. Run our recommendation platform's job suggester\\n\"+\n",
+    "              \"7. Exit\")\n",
+    "        request = input(\"Please select the number option that you wish to proceed with.\")\n",
+    "        if request == '1':\n",
+    "            SystemController.update_skills()\n",
+    "        elif request == '2':\n",
+    "            JobSeeker.job_search()\n",
+    "        elif request == '3':\n",
+    "            JobSeeker.invitation_check()\n",
+    "        elif request == '4':\n",
+    "            JobSeeker.job_check()\n",
+    "        elif request == '5':\n",
+    "            JobSeeker.industry_search()\n",
+    "        elif request == '6':\n",
+    "            SystemController.matching_scores()\n",
+    "        elif request == '7':\n",
+    "            SystemController.logout()\n",
+    "            return\n",
+    "        else:\n",
+    "            print(\"\\nInput not recognised.\")\n",
+    "            return Menu.seeker_menu()\n",
+    "    \n",
+    "    # Only accessible by recruiters.\n",
+    "    def recruiter_menu():\n",
+    "        print(\"\\nAvailable Options:\\n\"+\n",
+    "              \"1. Create Job\\n\"+\n",
+    "              \"2. Publish Job\\n\"+\n",
+    "              \"3. Remove Job\\n\"+\n",
+    "              \"4. View Job Applicants\\n\"+\n",
+    "              \"5. Check and Send Interview Invitations\\n\"+\n",
+    "              \"6. Suggest Job Category\\n\"+\n",
+    "              \"7. Check current job listings\\n\"+\n",
+    "              \"8. Exit\")\n",
+    "        request = input(\"Please select the number option you wish to proceed with.\")\n",
+    "        if request == '1':\n",
+    "            SystemController.create_job()\n",
+    "        elif request == '2':\n",
+    "            JobRecruiter.publish_job()\n",
+    "        elif request == '3':\n",
+    "            JobRecruiter.delete_job()\n",
+    "        elif request == '4':\n",
+    "            JobRecruiter.check_applicants()\n",
+    "        elif request == '5':\n",
+    "            JobRecruiter.check_invitations()\n",
+    "        elif request == '6':\n",
+    "            JobRecruiter.request_category()\n",
+    "        elif request == '7':\n",
+    "            JobRecruiter.get_jobs()\n",
+    "        elif request == '8':\n",
+    "            SystemController.logout()\n",
+    "        else:\n",
+    "            print(\"\\nInput not recogcnised.\")\n",
+    "            return Menu.recruiter_menu()\n",
+    "    \n",
+    "    # Only accessible by admins.\n",
+    "    def admin_menu():\n",
+    "        print(\"\\nAvailable Options:\\n\"+\n",
+    "             \"1. Create Job Category:\\n\"+ \n",
+    "             \"2. Exit\")\n",
+    "        request = input(\"Please select the number option you wish to proceed with.\")\n",
+    "        if request == '1':\n",
+    "            SystemAdministratorController.update_categories()\n",
+    "        elif request == '2':\n",
+    "            SystemController.logout()\n",
+    "        else:\n",
+    "            print(\"\\nInput not recognised.\")\n",
+    "            return Menu.admin_menu()\n",
+    "    \n",
+    "    # First menu people come across, or if their UID identifying character is corrupted.\n",
+    "    def splash_menu():\n",
+    "        print(\"\\nDo you wish to log in, start a new account, or close the program?\")\n",
+    "        request = input(\"Please enter either LOGIN, NEW, or EXIT.\")\n",
+    "        if request.lower() == \"login\":\n",
+    "            SystemController.login()\n",
+    "        elif request.lower() == \"new\":\n",
+    "            SystemController.gen_account()\n",
+    "        elif request.lower() == 'exit':\n",
+    "            raise SystemExit\n",
+    "        else:\n",
+    "            Menu.splash_menu()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Invitations\n",
+    "#### Entity Class"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "class Invitations:\n",
+    "    def __init__(self):\n",
+    "        self.data = []\n",
+    "        \n",
+    "    def issue_invitation():\n",
+    "        self.jobUID = input(\"Please provide the job UID for which you wish to send interview requests to applicants.\")\n",
+    "        jobselection = globJobsDF.applicants[globJobsDF.jobUID == self.jobUID].tolist()\n",
+    "        print(jobselection)\n",
+    "        self.applicant = input(\"Please input the applicant UID that you wish to apply for.\")\n",
+    "        if self.applicant not in jobselection:\n",
+    "            print(\"\\nApplicant ID not recognised, please try again.\")\n",
+    "            return Menu.main_menu()\n",
+    "        else:\n",
+    "            pass\n",
+    "        self.location = input(\"Please provide the address you wish to have the interview at.\")\n",
+    "        self.time = input(\"Please provide the time that you wish to meet the applicant.\")\n",
+    "        \n",
+    "    def accept_invitation():\n",
+    "        self.jobUID = input(\"Please enter the job UID you wish to respond to an invitation for.\")\n",
+    "        if self.jobUID in globInvitationDF.jobUID[globInvitationDF.seekerID == globUID].unique.tolist():\n",
+    "            pass\n",
+    "        else:\n",
+    "            print(\"\\nYou're not able to respond to interview requests for that job.\")\n",
+    "            return Invitations().accept_invitation()\n",
+    "        state = input(\"Do you wish to accept the invitation? Please enter YES (to accept) or NO (to turn down).\")\n",
+    "        if state.lower == \"true\":\n",
+    "            globInvitationDF.accepted[(globInvitationDF.seekerID == globUID) & (globInvitationDF.jobID)] = True\n",
+    "            globInvitationDF.to_csv(\"job_invitation.csv\", index=False)\n",
+    "            return \"Invitation successfully applied for.\"\n",
+    "        elif state.lower == \"false\":\n",
+    "            globInvitationDF.accepted[(globInvitationDF.seekerID == globUID) & (globInvitationDF.jobID)] = False\n",
+    "            globInvitationDF.to_csv(\"job_invitation.csv\", index=False)\n",
+    "            return \"Invitation successfully turned down.\"\n",
+    "        else:\n",
+    "            return Invitations().accept_invitation()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Testing\n",
+    "\n",
+    "Running this section will call the UI.initialise() method to generate and setup the databases (if this is your first time running the program), or otherwise will proceed to setting up the databases if their root CSV files are already present in the working directory.\n",
+    "\n",
+    "It then calls UI.run() to begin the login / account creation process."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "UI.initialise()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "UI.run()\n"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.6.5"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}
