@@ -1,4 +1,3 @@
-
 # coding: utf-8
 
 # In[ ]:
@@ -322,7 +321,7 @@ class SystemController:
             if iterscore[1] > 0:
                 print("\nYour optimal job can be found by applying for job UID", iterscore[0])
                 display(globJobsDF[[i for i in globJobsDF.columns.tolist() if i != "applicants"]][globJobsDF.jobUID == iterscore[0]])
-                return JobSeeker.job_apply()
+                return JobSeekerController.job_apply()
             else:
                 print("\nSorry, we couldn't identify a job to recommend based on the details you provided. Please try again some other time!")
                 return Menu.main_menu()
@@ -349,7 +348,7 @@ class SystemController:
 # In[ ]:
 
 
-class SystemAdministratorController:
+class SystemAdministrator:
     def update_categories():
         if globUID[-1] == 'a': # Check that the logged-in user is an administrator
             global globJobCatDF
@@ -572,7 +571,7 @@ class Job:
 # In[ ]:
 
 
-class JobRecruiter:
+class JobRecruiterController:
     # Display all jobs created by the logged-in recruiter
     def get_jobs():
         display(globJobsDF[globJobsDF.jobCreatorUID == globUID])
@@ -584,10 +583,10 @@ class JobRecruiter:
         if jobUID.lower() == "menu":
             return Menu.main_menu()
         if jobUID not in globJobsDF.jobUID.unique().tolist():
-            return JobRecruiter.get_jobs()
+            return JobRecruiterController.get_jobs()
         if len(globJobsDF.applicants[globJobsDF.jobUID == jobUID]) <= 2: #Indicates no job seekers
             print("\nNo applicants detected, please try with another job from the list below.")
-            return JobRecruiter.get_jobs()
+            return JobRecruiterController.get_jobs()
         else:
             applicants = [i.strip() for i in globJobsDF["applicants"][(globJobsDF.jobCreatorUID == globUID) & (globJobsDF.jobUID == jobUID)][0].replace("[", "").replace("]", "").replace("'", "").split(",")]
     
@@ -602,12 +601,12 @@ class JobRecruiter:
             
     # Publish a job so it is available for job seekers to see
     def publish_job():
-        print(JobRecruiter.get_jobs())
+        print(JobRecruiterController.get_jobs())
         jobUID = input("Please enter the job UID for the job you wish to remove, or enter MENU to return to the menu.")
         if jobUID.lower() == "menu":
             return Menu.main_menu()
         if jobUID not in globJobsDF.jobUID.unique().tolist():
-            return JobRecruiter.get_jobs()
+            return JobRecruiterController.get_jobs()
         else:
             globJobsDF.jobAdvertised[globJobsDF.jobUID == jobUID] = True
             globJobsDF.to_csv("jobs_db.csv", index=False)
@@ -626,7 +625,7 @@ class JobRecruiter:
         if jobUID.lower() == "menu":
             return Menu.main_menu()
         if jobUID not in globJobsDF.jobUID.unique().tolist():
-            return JobRecruiter.get_jobs()
+            return JobRecruiterController.get_jobs()
         else:
             globJobsDF.jobAdvertised[globJobsDF.jobUID == jobUID] = False
             globJobsDF.to_csv("jobs_db.csv", index=False)
@@ -639,7 +638,7 @@ class JobRecruiter:
 # In[ ]:
 
 
-class JobSeeker:
+class JobSeekerController:
     # Allow jobseekers to search for a job based on their skills.
     def job_search():
         userUID = globUID
@@ -652,7 +651,7 @@ class JobSeeker:
             print("\nSorry, we don't have any jobs for that job category.")
             print("\nWe currently have jobs available in the following sectors;")
             print(curr_jobs)
-            return JobSeeker.job_search()
+            return JobSeekerController.job_search()
         
         userskills = ast.literal_eval(globAccountsDF.skills[globAccountsDF.UID==globUID].tolist()[0])
         if type(userskills[0]) == list:
@@ -677,7 +676,7 @@ class JobSeeker:
                 if state.lower() == "exit":
                     return Menu.main_menu()
                 elif state.lower() == "apply":
-                    JobSeeker.job_apply()
+                    JobSeekerController.job_apply()
                     
     def industry_search():
         userUID = globUID
@@ -690,7 +689,7 @@ class JobSeeker:
             print("\nSorry, we don't have any jobs for that job category.")
             print("\nWe currently have jobs available in the following sectors;")
             print(curr_jobs)
-            return JobSeeker.industry_search()
+            return JobSeekerController.industry_search()
         
         # Pull available jobs. Second catch for whether jobs are available.
         jobs_avail = globJobsDF[[i for i in globJobsDF if i != 'applicants']][(globJobsDF.jobType == jobtype) & (globJobsDF.applicants.str.contains(userUID)==False) & (globJobsDF.jobAdvertised == True)]
@@ -703,7 +702,7 @@ class JobSeeker:
         while state.lower() not in ['true', 'false']:
             state = input("Please enter TRUE to apply for one of these jobs, otherwise enter EXIT to return to the menu.")
         if state.lower() == 'true':
-            return JobSeeker.job_apply()
+            return JobSeekerController.job_apply()
         else:
             return Menu.main_menu()
     
@@ -714,9 +713,9 @@ class JobSeeker:
         if jobapply not in globJobsDF.jobUID.unique().tolist():
             state = ("Job ID not detected. Enter RETRY to attempt again, SEARCH to search for jobs, or EXIT to return to the menu.")
             if state.lower() == "retry":
-                JobSeeker.job_apply()
+                JobSeekerController.job_apply()
             elif state.lower() == "search":
-                JobSeeker.job_search()
+                JobSeekerController.job_search()
             else:
                 Menu.main_menu()
         else:
@@ -763,7 +762,7 @@ class JobSeeker:
 
 
 #globUID = 'tetest0001s'
-#JobSeeker.job_search()
+#JobSeekerController.job_search()
 
 
 # # Documentation
@@ -823,13 +822,13 @@ class Menu:
         if request == '1':
             SystemController.update_skills()
         elif request == '2':
-            JobSeeker.job_search()
+            JobSeekerController.job_search()
         elif request == '3':
-            JobSeeker.invitation_check()
+            JobSeekerController.invitation_check()
         elif request == '4':
-            JobSeeker.job_check()
+            JobSeekerController.job_check()
         elif request == '5':
-            JobSeeker.industry_search()
+            JobSeekerController.industry_search()
         elif request == '6':
             SystemController.matching_scores()
         elif request == '7':
@@ -854,17 +853,17 @@ class Menu:
         if request == '1':
             SystemController.create_job()
         elif request == '2':
-            JobRecruiter.publish_job()
+            JobRecruiterController.publish_job()
         elif request == '3':
-            JobRecruiter.delete_job()
+            JobRecruiterController.delete_job()
         elif request == '4':
-            JobRecruiter.check_applicants()
+            JobRecruiterController.check_applicants()
         elif request == '5':
-            JobRecruiter.check_invitations()
+            JobRecruiterController.check_invitations()
         elif request == '6':
-            JobRecruiter.request_category()
+            JobRecruiterController.request_category()
         elif request == '7':
-            JobRecruiter.get_jobs()
+            JobRecruiterController.get_jobs()
         elif request == '8':
             SystemController.logout()
         else:
@@ -878,7 +877,7 @@ class Menu:
              "2. Exit")
         request = input("Please select the number option you wish to proceed with.")
         if request == '1':
-            SystemAdministratorController.update_categories()
+            SystemAdministrator.update_categories()
         elif request == '2':
             SystemController.logout()
         else:
